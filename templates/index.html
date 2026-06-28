@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Chazza Spotter</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <main class="wrap">
+    <section class="hero">
+      <div>
+        <p class="eyebrow">Jacko Brain v1</p>
+        <h1>Chazza Spotter</h1>
+        <p class="sub">Quick charity shop buy-or-leave verdicts for Craig’s resale game.</p>
+      </div>
+      <div class="badge">BETA</div>
+    </section>
+
+    <section class="card">
+      <label>Brand</label>
+      <input id="brand" list="brandList" placeholder="e.g. Guide London">
+      <datalist id="brandList">
+        {% for b in brands %}<option value="{{ b|title }}"></option>{% endfor %}
+      </datalist>
+
+      <label>Garment</label>
+      <input id="garment" placeholder="e.g. shirt, jacket, chinos">
+
+      <label>Charity shop price £</label>
+      <input id="price" type="number" step="0.50" placeholder="e.g. 5">
+
+      <label>Condition</label>
+      <select id="condition">
+        <option>Mint</option>
+        <option>Very good</option>
+        <option>Good</option>
+        <option>Needs checking</option>
+        <option>Has flaw</option>
+      </select>
+
+      <label>Notes / red flags</label>
+      <textarea id="notes" placeholder="stain, bobbling, heavy cotton, BNWT, nice pattern..."></textarea>
+
+      <div class="buttons">
+        <button onclick="checkItem()">Ask Jacko</button>
+        <button class="secondary" onclick="saveItem()">Save Spot</button>
+      </div>
+    </section>
+
+    <section id="result" class="result hidden"></section>
+
+    <section class="card">
+      <h2>Spotted today</h2>
+      <div id="spots">
+        {% for s in spots %}
+        <div class="spot">
+          <strong>{{ s.brand }} {{ s.garment }}</strong>
+          <span>£{{ s.price }} · {{ s.verdict.decision }} · Tier {{ s.verdict.tier }}</span>
+          <small>{{ s.created_at }}</small>
+        </div>
+        {% else %}
+        <p class="empty">No spots saved yet.</p>
+        {% endfor %}
+      </div>
+    </section>
+  </main>
+<script>
+function payload(){
+  return {
+    brand: document.getElementById('brand').value,
+    garment: document.getElementById('garment').value,
+    price: document.getElementById('price').value,
+    condition: document.getElementById('condition').value,
+    notes: document.getElementById('notes').value
+  }
+}
+async function checkItem(){
+  const res = await fetch('/api/check', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload())})
+  const v = await res.json()
+  showVerdict(v)
+}
+async function saveItem(){
+  const res = await fetch('/api/save', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload())})
+  const data = await res.json()
+  showVerdict(data.item.verdict)
+  location.reload()
+}
+function showVerdict(v){
+  const el = document.getElementById('result')
+  el.className = 'result ' + v.decision.toLowerCase().replace(' ', '-')
+  el.innerHTML = `<h2>${v.decision}</h2><p>${v.message}</p><div class="facts"><span>Tier ${v.tier}</span><span>Max £${v.max_buy}</span><span>List £${v.resale}</span></div>${v.red_flags.length ? '<p class="flags">⚠️ ' + v.red_flags.join(', ') + '</p>' : ''}`
+}
+</script>
+</body>
+</html>
